@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="EduCity - game latihan Matematika untuk persiapan TKA SD kelas 5-6.">
+    <meta name="theme-color" content="#2E7D32">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>EduCity - Persiapan TKA SD</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+</head>
+<body>
+    <div id="game-root">
+        <!-- Loading -->
+        <div id="loading-screen" class="screen active" role="status" aria-live="polite" aria-label="Memuat game">
+            <div class="loading-content">
+                <div class="loading-logo" aria-hidden="true">
+                    <svg width="88" height="88" viewBox="0 0 88 88" fill="none">
+                        <rect width="88" height="88" rx="20" fill="#2E7D32"/>
+                        <text x="44" y="58" font-family="Nunito, sans-serif" font-size="34" font-weight="800" fill="white" text-anchor="middle">EC</text>
+                    </svg>
+                </div>
+                <h1 class="loading-title">EduCity</h1>
+                <p class="loading-subtitle">Latihan Matematika untuk TKA SD</p>
+                <div class="loading-progress" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="loading-progress">
+                    <div class="loading-bar" id="loading-bar"></div>
+                </div>
+                <p class="loading-text" id="loading-text">Memuat aset...</p>
+            </div>
+        </div>
+
+        <!-- Login -->
+        <div id="login-screen" class="screen" role="dialog" aria-labelledby="login-title" aria-modal="true">
+            <div class="login-card">
+                <div class="login-header">
+                    <div class="login-logo" aria-hidden="true">
+                        <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                            <rect width="64" height="64" rx="14" fill="#2E7D32"/>
+                            <text x="32" y="42" font-family="Nunito, sans-serif" font-size="24" font-weight="800" fill="white" text-anchor="middle">EC</text>
+                        </svg>
+                    </div>
+                    <h1 id="login-title">Masuk ke EduCity</h1>
+                    <p class="login-subtitle">Belajar Matematika kelas 5–6 SD, 15–25 menit sehari.</p>
+                </div>
+                <form id="login-form" novalidate>
+                    <div class="form-group">
+                        <label for="class-code">Kode Kelas</label>
+                        <input type="text" id="class-code" name="classCode" required autocomplete="off" maxlength="12" placeholder="Contoh: 6A" aria-describedby="class-code-error">
+                        <span class="form-error" id="class-code-error" aria-live="polite"></span>
+                    </div>
+                    <div class="form-group">
+                        <label for="student-name">Nama Panggilan</label>
+                        <input type="text" id="student-name" name="studentName" required autocomplete="nickname" maxlength="20" placeholder="Contoh: Budi" aria-describedby="student-name-error">
+                        <span class="form-error" id="student-name-error" aria-live="polite"></span>
+                    </div>
+                    <div class="form-group">
+                        <label for="pin">PIN 4 Digit</label>
+                        <input type="password" id="pin" name="pin" required autocomplete="off" inputmode="numeric" maxlength="4" minlength="4" placeholder="••••" pattern="[0-9]{4}" aria-describedby="pin-error">
+                        <span class="form-error" id="pin-error" aria-live="polite"></span>
+                    </div>
+                    <label class="consent-row">
+                        <input type="checkbox" id="parental-consent" required>
+                        <span>Saya orang tua/wali dan menyetujui data belajar disimpan di perangkat ini.</span>
+                    </label>
+                    <span class="form-error" id="consent-error" aria-live="polite"></span>
+                    <button type="submit" class="btn btn-primary btn-block" id="login-btn">
+                        <span class="btn-text">Mulai Belajar</span>
+                        <span class="btn-loader" aria-hidden="true"></span>
+                    </button>
+                </form>
+                <p class="login-note">Data disimpan di perangkat ini saja. Tanpa iklan, tanpa pelacak, tanpa server.</p>
+            </div>
+        </div>
+
+        <!-- Game -->
+        <div id="game-container" class="screen" hidden>
+            <header class="game-hud" role="banner">
+                <div class="hud-left">
+                    <button class="icon-btn" id="btn-menu" aria-label="Buka menu utama" aria-expanded="false" aria-controls="side-menu">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
+                    <div class="location-info">
+                        <span class="district-name" id="district-name">Kota EduCity</span>
+                        <span class="subtopic-name" id="subtopic-name" hidden></span>
+                    </div>
+                </div>
+                <div class="hud-center">
+                    <div class="xp-bar-container" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Pengalaman" id="xp-progress">
+                        <div class="xp-bar" id="xp-bar"></div>
+                        <span class="xp-text" id="xp-text">Level 1 · 0/100 XP</span>
+                    </div>
+                </div>
+                <div class="hud-right">
+                    <div class="currency-display" aria-label="Koin">
+                        <span class="coin-icon" aria-hidden="true">🪙</span>
+                        <span id="coin-count">0</span>
+                    </div>
+                    <div class="hearts-display" id="hearts-display" role="img" aria-label="Nyawa 3 dari 3">♥♥♥</div>
+                    <button class="icon-btn" id="btn-settings" aria-label="Pengaturan">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <main class="game-main" role="main">
+                <canvas id="game-canvas" aria-label="Peta kota EduCity"></canvas>
+                <div id="ui-overlay" class="ui-overlay"></div>
+                <div id="screen-host" class="screen-host" hidden></div>
+            </main>
+
+            <nav class="bottom-nav" role="navigation" aria-label="Navigasi utama">
+                <button class="nav-item" id="nav-map" data-screen="map" aria-label="Peta Kota" aria-current="page">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                        <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon>
+                        <line x1="9" y1="3" x2="9" y2="18"></line>
+                        <line x1="15" y1="6" x2="15" y2="21"></line>
+                    </svg>
+                    <span>Kota</span>
+                </button>
+                <button class="nav-item" id="nav-lessons" data-screen="lessons" aria-label="Perpustakaan">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                    </svg>
+                    <span>Belajar</span>
+                </button>
+                <button class="nav-item nav-center" id="nav-home" data-screen="home" aria-label="Beranda">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                </button>
+                <button class="nav-item" id="nav-arena" data-screen="arena" aria-label="Arena latihan">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                        <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"></polygon>
+                    </svg>
+                    <span>Latihan</span>
+                </button>
+                <button class="nav-item" id="nav-profile" data-screen="profile" aria-label="Profil dan dasbor">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span>Profil</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Side menu -->
+        <aside id="side-menu" class="side-menu" role="dialog" aria-label="Menu utama" aria-modal="true" hidden>
+            <div class="side-menu-backdrop" aria-hidden="true"></div>
+            <div class="side-menu-panel">
+                <div class="side-menu-header">
+                    <h2>Menu Utama</h2>
+                    <button class="icon-btn" id="btn-close-menu" aria-label="Tutup menu">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <nav class="side-menu-nav">
+                    <button class="menu-item" data-screen="map">
+                        <span class="menu-icon" aria-hidden="true">🗺️</span>
+                        <span>Peta Kota</span>
+                    </button>
+                    <button class="menu-item" data-screen="lessons">
+                        <span class="menu-icon" aria-hidden="true">📚</span>
+                        <span>Perpustakaan (Pelajaran)</span>
+                    </button>
+                    <button class="menu-item" data-screen="missions">
+                        <span class="menu-icon" aria-hidden="true">🎯</span>
+                        <span>Misi Harian</span>
+                    </button>
+                    <button class="menu-item" data-screen="arena">
+                        <span class="menu-icon" aria-hidden="true">⚔️</span>
+                        <span>Arena (Latihan &amp; Boss)</span>
+                    </button>
+                    <button class="menu-item" data-screen="tryout">
+                        <span class="menu-icon" aria-hidden="true">🏫</span>
+                        <span>Sekolah (Tryout CBT)</span>
+                    </button>
+                    <button class="menu-item" data-screen="mistakes">
+                        <span class="menu-icon" aria-hidden="true">📕</span>
+                        <span>Buku Kesalahan</span>
+                    </button>
+                    <button class="menu-item" data-screen="shop">
+                        <span class="menu-icon" aria-hidden="true">🏪</span>
+                        <span>Toko</span>
+                    </button>
+                    <button class="menu-item" data-screen="profile">
+                        <span class="menu-icon" aria-hidden="true">👤</span>
+                        <span>Profil &amp; Dasbor</span>
+                    </button>
+                    <button class="menu-item" data-screen="settings">
+                        <span class="menu-icon" aria-hidden="true">⚙️</span>
+                        <span>Pengaturan</span>
+                    </button>
+                </nav>
+                <div class="side-menu-footer">
+                    <div class="user-info">
+                        <div class="avatar" id="menu-avatar" aria-hidden="true">?</div>
+                        <div class="user-details">
+                            <span class="user-name" id="menu-name">Siswa</span>
+                            <span class="user-class" id="menu-class">Kelas -</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary btn-block" id="btn-logout">Keluar</button>
+                </div>
+            </div>
+        </aside>
+
+        <div id="modal-container" class="modal-container" role="dialog" aria-modal="true" hidden></div>
+        <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+    </div>
+
+    <script>
+        (function () {
+            if (location.protocol === 'file:') {
+                var loadingText = document.getElementById('loading-text');
+                var loadingProgress = document.getElementById('loading-progress');
+                var loadingBar = document.getElementById('loading-bar');
+                if (loadingText) loadingText.textContent = 'Game ini butuh server lokal (ES Modules + fetch diblokir di file://).';
+                if (loadingProgress) loadingProgress.hidden = true;
+                if (loadingBar) loadingBar.style.width = '0%';
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-primary';
+                btn.style.marginTop = '16px';
+                btn.textContent = 'Cara Jalankan';
+                btn.addEventListener('click', function () {
+                    var msg = '1. Buka terminal di folder Games/\n' +
+                        '2. Jalankan: python3 -m http.server 8080\n' +
+                        '3. Buka browser: http://localhost:8080\n\n' +
+                        'Atau npm start jika sudah install dependencies.';
+                    alert(msg);
+                });
+                var content = document.querySelector('.loading-content');
+                if (content) content.appendChild(btn);
+            }
+        })();
+    </script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

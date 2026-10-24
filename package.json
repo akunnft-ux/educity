@@ -10,7 +10,8 @@
     "test": "node tests/run.mjs",
     "test:engine": "node tests/questionEngine.test.mjs",
     "test:state": "node tests/state.test.mjs",
-    "test:e2e": "node tests/e2e.test.mjs"
+    "test:e2e": "node tests/e2e.test.mjs",
+    "test:layout": "node tests/map-layout.test.mjs"
   },
   "keywords": [
     "tkasd",
@@ -19,7 +20,7 @@
     "game"
   ],
   "license": "UNLICENSED",
-  "dependencies": {
+  "devDependencies": {
     "playwright-core": "^1.64.1"
   }
 }

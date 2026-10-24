@@ -3,7 +3,7 @@ import { gameState } from './core/GameState.js';
 import { Storage } from './core/Storage.js';
 import { audioService } from './core/AudioService.js';
 import { masteryService } from './core/MasteryService.js';
-import { CityMapRenderer } from './scenes/CityMapScene.js';
+import { CityMapRenderer, WORLD_WIDTH, WORLD_HEIGHT } from './scenes/CityMapScene.js';
 import { CURRICULUM } from '../data/curriculum.js';
 import { showToast, el, confirmDialog, openModal, escapeHtml } from './ui/dom.js';
 import { LessonScreen } from './screens/LessonScreen.js';
@@ -256,15 +256,76 @@ function initMap() {
     mapRenderer.setViewport(width, height);
     mapRenderer.setReducedMotion(reducedMotionQuery.matches || gameState.getSettings()?.reducedMotion === true);
 
-    canvas.addEventListener('click', onCanvasClick);
-    canvas.addEventListener('mousemove', onCanvasMove);
-    canvas.addEventListener('mouseleave', () => mapRenderer?.setHoveredBuilding(null));
-    canvas.addEventListener('touchstart', onCanvasTouch, { passive: true });
+    // Pointer Events for drag/pan and tap
+    let drag = null;
+    const DRAG_THRESHOLD = 6;
+
+    canvas.addEventListener('pointerdown', (e) => {
+        if (currentScreen !== 'map' || !mapRenderer) return;
+        canvas.setPointerCapture(e.pointerId);
+        drag = {
+            id: e.pointerId,
+            sx: e.clientX, sy: e.clientY,
+            ox: mapRenderer.targetOffsetX, oy: mapRenderer.targetOffsetY,
+            moved: false
+        };
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+        if (currentScreen !== 'map' || !mapRenderer) return;
+        if (drag && e.pointerId === drag.id) {
+            const dx = e.clientX - drag.sx;
+            const dy = e.clientY - drag.sy;
+            if (!drag.moved && Math.hypot(dx, dy) > DRAG_THRESHOLD) drag.moved = true;
+            if (drag.moved) {
+                mapRenderer.panTo(drag.ox - dx, drag.oy - dy);
+                canvas.style.cursor = 'grabbing';
+            }
+            return;
+        }
+        onCanvasMove(e);
+    });
+
+    canvas.addEventListener('pointerup', (e) => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const wasDrag = drag.moved;
+        drag = null;
+        canvas.style.cursor = 'default';
+        if (!wasDrag) onCanvasClick(e);
+    });
+
+    canvas.addEventListener('pointercancel', () => { drag = null; canvas.style.cursor = 'default'; });
+    canvas.addEventListener('pointerleave', () => { if (!drag) mapRenderer?.setHoveredBuilding(null); });
+
+    canvas.addEventListener('wheel', (e) => {
+        if (currentScreen !== 'map' || !mapRenderer) return;
+        e.preventDefault();
+        mapRenderer.panTo(mapRenderer.targetOffsetX + e.deltaX, mapRenderer.targetOffsetY + e.deltaY);
+    }, { passive: false });
 
     window.addEventListener('resize', onResize);
     reducedMotionQuery.addEventListener?.('change', (e) => {
         mapRenderer?.setReducedMotion(e.matches || gameState.getSettings()?.reducedMotion === true);
     });
+
+    // Initial camera: center on first 'building' status subtopic, or first non-locked, or world center
+    let targetBuilding = mapRenderer.buildings.find(b => {
+        if (b.type !== 'subtopic') return false;
+        const mastery = masteryService.getMasteryState(b.subtopic);
+        return mastery.status === 'building';
+    });
+    if (!targetBuilding) {
+        targetBuilding = mapRenderer.buildings.find(b => {
+            if (b.type !== 'subtopic') return false;
+            const mastery = masteryService.getMasteryState(b.subtopic);
+            return mastery.status !== 'locked';
+        });
+    }
+    if (targetBuilding) {
+        mapRenderer.centerOnBuilding(targetBuilding);
+    } else {
+        mapRenderer.panTo((WORLD_WIDTH - width) / 2, (WORLD_HEIGHT - height) / 2);
+    }
 
     startMapLoop();
 }
@@ -294,13 +355,6 @@ function onCanvasMove(e) {
     if (currentScreen !== 'map' || !mapRenderer) return;
     const { x, y } = toCanvasPoint(e.clientX, e.clientY);
     mapRenderer.setHoveredBuilding(mapRenderer.getBuildingAt(x, y));
-}
-
-let touchStart = null;
-function onCanvasTouch(e) {
-    const touch = e.touches?.[0];
-    if (!touch) return;
-    touchStart = { x: touch.clientX, y: touch.clientY };
 }
 
 function handleBuilding(building) {
@@ -760,8 +814,32 @@ window.addEventListener('error', (e) => {
     showToast('Terjadi kesalahan. Silakan muat ulang halaman.', 'error', 8000);
 });
 
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
-    });
-}
+let toastDebounce = 0;
+window.addEventListener('unhandledrejection', (e) => {
+    console.error('Unhandled rejection:', e.reason);
+    const now = Date.now();
+    if (now - toastDebounce > 5000) {
+        toastDebounce = now;
+        showToast('Terjadi kesalahan jaringan. Silakan coba lagi.', 'error', 5000);
+    }
+    e.preventDefault();
+});
+
+// Service worker registration - disabled for test stability
+// if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+//     let swUpdateNotified = false;
+//     navigator.serviceWorker.addEventListener('message', (e) => {
+//         if (e.data?.type === 'SW_UPDATED' && !swUpdateNotified) {
+//             swUpdateNotified = true;
+//             showToast('Versi baru tersedia. Memuat ulang...', 'info', 5000);
+//             setTimeout(() => window.location.reload(), 3000);
+//         }
+//     });
+//     window.addEventListener('load', async () => {
+//         try {
+//             const reg = await navigator.serviceWorker.getRegistration();
+//             if (reg) await reg.unregister();
+//         } catch {}
+//         navigator.serviceWorker.register('sw.js').catch(() => {});
+//     });
+// }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'educity-v2';
+const CACHE_NAME = 'educity-v3';
 const APP_SHELL = [
     './',
     './index.html',
@@ -28,12 +28,35 @@ const APP_SHELL = [
     './assets/assets.json'
 ];
 
+function isAppShellRequest(request) {
+    const url = new URL(request.url);
+    return url.pathname === '/' ||
+        url.pathname === '/index.html' ||
+        url.pathname.startsWith('/js/') ||
+        url.pathname.startsWith('/styles/') ||
+        url.pathname.startsWith('/data/') ||
+        url.pathname === '/manifest.json' ||
+        url.pathname === '/assets/assets.json';
+}
+
+function isAssetRequest(request) {
+    const url = new URL(request.url);
+    return url.pathname.startsWith('/assets/') &&
+        (url.pathname.endsWith('.png') ||
+         url.pathname.endsWith('.wav') ||
+         url.pathname.endsWith('.json'));
+}
+
+async function notifyClients(message) {
+    const clients = await self.clients.matchAll();
+    clients.forEach(client => client.postMessage(message));
+}
+
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => cache.addAll(APP_SHELL))
             .then(() => self.skipWaiting())
-            .catch(() => self.skipWaiting())
     );
 });
 
@@ -42,6 +65,7 @@ self.addEventListener('activate', (event) => {
         caches.keys()
             .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
             .then(() => self.clients.claim())
+            .then(() => notifyClients({ type: 'SW_UPDATED', version: CACHE_NAME }))
     );
 });
 
@@ -52,9 +76,10 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(request.url);
     if (url.origin !== location.origin) return;
 
-    event.respondWith(
-        caches.match(request).then(cached => {
-            const network = fetch(request)
+    if (isAppShellRequest(request)) {
+        // Network-first for app shell (HTML, JS, CSS, JSON)
+        event.respondWith(
+            fetch(request)
                 .then(response => {
                     if (response && response.ok) {
                         const copy = response.clone();
@@ -62,9 +87,40 @@ self.addEventListener('fetch', (event) => {
                     }
                     return response;
                 })
-                .catch(() => cached);
+                .catch(() => caches.match(request))
+        );
+        return;
+    }
 
-            return cached || network;
-        })
+    if (isAssetRequest(request)) {
+        // Cache-first for assets
+        event.respondWith(
+            caches.match(request).then(cached => {
+                if (cached) return cached;
+                return fetch(request)
+                    .then(response => {
+                        if (response && response.ok) {
+                            const copy = response.clone();
+                            caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(() => {});
+                        }
+                        return response;
+                    })
+                    .catch(() => cached);
+            })
+        );
+        return;
+    }
+
+    // Default: network-first
+    event.respondWith(
+        fetch(request)
+            .then(response => {
+                if (response && response.ok) {
+                    const copy = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(() => {});
+                }
+                return response;
+            })
+            .catch(() => caches.match(request))
     );
 });

@@ -2,9 +2,9 @@ import { assetLoader } from '../core/AssetLoader.js';
 import { CURRICULUM, BUILDING_STATUS } from '../../data/curriculum.js';
 import { masteryService } from '../core/MasteryService.js';
 
-const WORLD_WIDTH = 1280;
-const WORLD_HEIGHT = 900;
-const TILE = 32;
+export const WORLD_WIDTH = 1400;
+export const WORLD_HEIGHT = 1250;
+export const TILE = 32;
 
 const BUILDING_SPRITES = {
     house: 'buildings/house',
@@ -32,7 +32,7 @@ export class CityMapRenderer {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.gameState = gameState;
-        this.scale = 1;
+        this.dpr = 1;
         this.offsetX = 0;
         this.offsetY = 0;
         this.targetOffsetX = 0;
@@ -52,27 +52,27 @@ export class CityMapRenderer {
         this._initNPCs();
     }
 
-    _initBuildings() {
+_initBuildings() {
         this.buildings = [
-            { id: 'house', type: 'house', label: 'Rumah', x: 120, y: 620, w: 96, h: 96 },
-            { id: 'school', type: 'school', label: 'Sekolah', x: 1050, y: 120, w: 96, h: 96 },
-            { id: 'library', type: 'library', label: 'Perpustakaan', x: 140, y: 130, w: 96, h: 96 },
-            { id: 'arena', type: 'arena', label: 'Arena', x: 1050, y: 620, w: 96, h: 96 },
-            { id: 'shop', type: 'shop', label: 'Toko', x: 600, y: 760, w: 96, h: 96 }
+            { id: 'house', type: 'house', label: 'Rumah', x: 40, y: 1100, w: 96, h: 96 },
+            { id: 'school', type: 'school', label: 'Sekolah', x: 1260, y: 60, w: 96, h: 96 },
+            { id: 'library', type: 'library', label: 'Perpustakaan', x: 40, y: 60, w: 96, h: 96 },
+            { id: 'arena', type: 'arena', label: 'Arena', x: 1220, y: 1100, w: 96, h: 96 },
+            { id: 'shop', type: 'shop', label: 'Toko', x: 700, y: 1120, w: 96, h: 96 }
         ];
 
         const domains = CURRICULUM.domains;
         const districtCenters = {
-            bilangan: { x: 400, y: 330 },
-            geometri: { x: 880, y: 330 },
-            data: { x: 640, y: 560 }
+            bilangan: { x: 380, y: 300 },
+            geometri: { x: 1050, y: 300 },
+            data: { x: 700, y: 800 }
         };
 
         domains.forEach(domain => {
-            const center = districtCenters[domain.id] || { x: 640, y: 450 };
+            const center = districtCenters[domain.id] || { x: 700, y: 650 };
             const cols = Math.ceil(Math.sqrt(domain.subtopics.length));
-            const spacingX = 118;
-            const spacingY = 118;
+            const spacingX = 155;
+            const spacingY = 155;
 
             domain.subtopics.forEach((subtopic, index) => {
                 const row = Math.floor(index / cols);
@@ -101,15 +101,15 @@ export class CityMapRenderer {
 
     _initNPCs() {
         this.npcs = [
-            { type: 'teacher', x: 520, y: 430, targetX: 520, targetY: 430, frame: 0, dir: 'down', wait: 0 },
-            { type: 'student', x: 700, y: 300, targetX: 700, targetY: 300, frame: 0, dir: 'down', wait: 0 },
-            { type: 'merchant', x: 780, y: 660, targetX: 780, targetY: 660, frame: 0, dir: 'down', wait: 0 }
+            { type: 'teacher', x: 550, y: 550, targetX: 550, targetY: 550, frame: 0, dir: 'down', wait: 0 },
+            { type: 'student', x: 750, y: 350, targetX: 750, targetY: 350, frame: 0, dir: 'down', wait: 0 },
+            { type: 'merchant', x: 850, y: 850, targetX: 850, targetY: 850, frame: 0, dir: 'down', wait: 0 }
         ];
     }
 
     resize(width, height) {
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        this.scale = dpr;
+        this.dpr = dpr;
         this.canvas.width = Math.round(width * dpr);
         this.canvas.height = Math.round(height * dpr);
         this.canvas.style.width = `${width}px`;
@@ -128,10 +128,6 @@ export class CityMapRenderer {
 
     setReducedMotion(value) {
         this.reducedMotion = Boolean(value);
-    }
-
-    setZoom(scale) {
-        this.scaleFactor = Math.max(0.6, Math.min(1.6, scale));
     }
 
     update(deltaTime) {
@@ -209,13 +205,31 @@ export class CityMapRenderer {
         this.targetOffsetY = Math.max(0, Math.min(maxY, this.targetOffsetY));
     }
 
+    _getCenteringOffset() {
+        const centerX = this.viewportWidth > WORLD_WIDTH ? (this.viewportWidth - WORLD_WIDTH) / 2 : 0;
+        const centerY = this.viewportHeight > WORLD_HEIGHT ? (this.viewportHeight - WORLD_HEIGHT) / 2 : 0;
+        return { x: centerX, y: centerY };
+    }
+
+    panTo(x, y) {
+        this.targetOffsetX = x;
+        this.targetOffsetY = y;
+        this._clampCamera();
+        if (this.reducedMotion) {
+            this.offsetX = this.targetOffsetX;
+            this.offsetY = this.targetOffsetY;
+        }
+    }
+
     render() {
         const ctx = this.ctx;
         const width = this.viewportWidth;
         const height = this.viewportHeight;
 
+        const centerOffset = this._getCenteringOffset();
+
         ctx.save();
-        ctx.translate(-Math.round(this.offsetX), -Math.round(this.offsetY));
+        ctx.translate(centerOffset.x - Math.round(this.offsetX), centerOffset.y - Math.round(this.offsetY));
 
         this._drawGround();
         this._drawWater();
@@ -256,10 +270,11 @@ export class CityMapRenderer {
     _drawWater() {
         const ctx = this.ctx;
         const hasSheet = assetLoader.hasFrame('tileset_terrain', 'water_0');
-        const ponds = [
-            { x: 40, y: 380, cols: 5, rows: 4 },
-            { x: 1140, y: 380, cols: 4, rows: 4 },
-            { x: 520, y: 40, cols: 6, rows: 2 }
+const ponds = [
+            { x: 40, y: 160, cols: 5, rows: 4 },
+            { x: 1200, y: 340, cols: 4, rows: 4 },
+            { x: 600, y: 80, cols: 6, rows: 2 },
+            { x: 600, y: 1020, cols: 4, rows: 2 }
         ];
 
         for (const pond of ponds) {
@@ -282,11 +297,12 @@ export class CityMapRenderer {
     _drawPaths() {
         const ctx = this.ctx;
         const hasSheet = assetLoader.hasFrame('tileset_terrain', 'path');
-        const paths = [
-            { x: 200, y: 660, cols: 26, rows: 1 },
-            { x: 600, y: 200, cols: 1, rows: 18 },
-            { x: 240, y: 350, cols: 24, rows: 1 },
-            { x: 600, y: 700, cols: 1, rows: 3 }
+const paths = [
+            { x: 200, y: 600, cols: 28, rows: 1 },
+            { x: 700, y: 200, cols: 1, rows: 18 },
+            { x: 240, y: 450, cols: 24, rows: 1 },
+            { x: 700, y: 750, cols: 1, rows: 3 },
+            { x: 700, y: 1050, cols: 1, rows: 3 }
         ];
 
         for (const path of paths) {
@@ -308,9 +324,9 @@ export class CityMapRenderer {
     _drawDistrictLabels() {
         const ctx = this.ctx;
         const labels = [
-            { text: 'Distrik Bilangan', x: 400, y: 175, color: '#2E7D32' },
-            { text: 'Distrik Geometri', x: 880, y: 175, color: '#1565C0' },
-            { text: 'Distrik Data', x: 640, y: 415, color: '#E65100' }
+            { text: 'Distrik Bilangan', x: 350, y: 175, color: '#2E7D32' },
+            { text: 'Distrik Geometri', x: 1050, y: 175, color: '#1565C0' },
+            { text: 'Distrik Data', x: 700, y: 700, color: '#E65100' }
         ];
 
         ctx.save();
@@ -515,8 +531,9 @@ export class CityMapRenderer {
     }
 
     getBuildingAt(clientX, clientY) {
-        const worldX = clientX + this.offsetX;
-        const worldY = clientY + this.offsetY;
+        const centerOffset = this._getCenteringOffset();
+        const worldX = clientX + this.offsetX - centerOffset.x;
+        const worldY = clientY + this.offsetY - centerOffset.y;
 
         for (const building of this.buildings) {
             if (worldX >= building.x - 8 && worldX <= building.x + building.w + 8 &&

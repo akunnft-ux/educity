@@ -11,11 +11,14 @@ export class AssetLoader {
         this.manifest = null;
         this.loadPromise = null;
         this.failed = [];
+        this.failedDetails = [];
     }
 
     async load(manifest, onProgress = null) {
         if (this.loadPromise) return this.loadPromise;
         this.manifest = manifest;
+        this.failed = [];
+        this.failedDetails = [];
         this.loadPromise = this._loadAll(manifest, onProgress);
         return this.loadPromise;
     }
@@ -25,26 +28,28 @@ export class AssetLoader {
 
         const sheets = manifest.sheets || {};
         for (const [name, data] of Object.entries(sheets)) {
-            tasks.push(() => this._loadSpriteSheet(name, data));
+            tasks.push({ label: `spritesheet:${name}`, task: () => this._loadSpriteSheet(name, data) });
         }
 
         const assets = manifest.assets || {};
         for (const key of Object.keys(assets)) {
             if (!key.startsWith('buildings/') && !key.startsWith('environment/')) continue;
-            tasks.push(() => this._loadImage(key, `${IMAGE_ROOT}/${key}.png`));
+            tasks.push({ label: `image:${key}`, task: () => this._loadImage(key, `${IMAGE_ROOT}/${key}.png`) });
         }
 
         const audioList = manifest.audio || [];
         for (const name of audioList) {
-            tasks.push(() => this._loadAudio(name, `${AUDIO_ROOT}/${name}.wav`));
+            tasks.push({ label: `audio:${name}`, task: () => this._loadAudio(name, `${AUDIO_ROOT}/${name}.wav`) });
         }
 
         const total = tasks.length || 1;
         let done = 0;
 
-        const results = await Promise.allSettled(tasks.map(async (task) => {
+        const results = await Promise.allSettled(tasks.map(async ({ label, task }) => {
             try {
                 return await task();
+            } catch (err) {
+                throw new Error(`${label} failed: ${err.message}`);
             } finally {
                 done++;
                 if (onProgress) onProgress(Math.round((done / total) * 100));
@@ -54,6 +59,8 @@ export class AssetLoader {
         results.forEach((r, i) => {
             if (r.status === 'rejected') {
                 this.failed.push(i);
+                this.failedDetails.push({ label: tasks[i].label, reason: r.reason?.message });
+                console.warn(`Aset gagal dimuat: ${tasks[i].label} - ${r.reason?.message}`);
             }
         });
 
@@ -61,7 +68,8 @@ export class AssetLoader {
             images: this.assets.size,
             sheets: this.sheets.size,
             audio: this.audio.size,
-            failed: this.failed.length
+            failed: this.failed.length,
+            failedDetails: this.failedDetails
         };
     }
 
@@ -130,10 +138,6 @@ export class AssetLoader {
         return this.sheets.get(name);
     }
 
-    getAudio(name) {
-        return this.audio.get(name);
-    }
-
     hasFrame(sheetName, frameName) {
         const sheet = this.sheets.get(sheetName);
         return Boolean(sheet && sheet.frames[frameName] !== undefined);
@@ -161,25 +165,6 @@ export class AssetLoader {
             Math.round(y),
             width ?? sw,
             height ?? sh
-        );
-        return true;
-    }
-
-    drawSpriteFrame(ctx, sheetName, frameIndex, x, y, width = null, height = null) {
-        const sheet = this.sheets.get(sheetName);
-        if (!sheet) return false;
-        const col = frameIndex % sheet.cols;
-        const row = Math.floor(frameIndex / sheet.cols);
-        ctx.drawImage(
-            sheet.image,
-            col * sheet.cellWidth,
-            row * sheet.cellHeight,
-            sheet.cellWidth,
-            sheet.cellHeight,
-            Math.round(x),
-            Math.round(y),
-            width ?? sheet.cellWidth,
-            height ?? sheet.cellHeight
         );
         return true;
     }

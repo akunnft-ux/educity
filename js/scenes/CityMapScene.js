@@ -47,6 +47,10 @@ export class CityMapRenderer {
         this.animationTime = 0;
         this.waterFrame = 0;
         this.reducedMotion = false;
+        this.zoom = 1;
+        this.minZoom = 0.5;
+        this.maxZoom = 2.5;
+        this.targetZoom = 1;
 
         this._initBuildings();
         this._initNPCs();
@@ -126,6 +130,31 @@ _initBuildings() {
         this._clampCamera();
     }
 
+    setZoom(zoom, centerX = null, centerY = null) {
+        const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, zoom));
+        if (centerX !== null && centerY !== null && newZoom !== this.zoom) {
+            const worldX = (centerX - this.viewportWidth / 2) / this.zoom + this.offsetX;
+            const worldY = (centerY - this.viewportHeight / 2) / this.zoom + this.offsetY;
+            this.offsetX = worldX - (centerX - this.viewportWidth / 2) / newZoom;
+            this.offsetY = worldY - (centerY - this.viewportHeight / 2) / newZoom;
+        }
+        this.zoom = newZoom;
+        this.targetZoom = newZoom;
+        this._clampCamera();
+    }
+
+    zoomIn(centerX = null, centerY = null) {
+        this.setZoom(this.zoom * 1.2, centerX, centerY);
+    }
+
+    zoomOut(centerX = null, centerY = null) {
+        this.setZoom(this.zoom / 1.2, centerX, centerY);
+    }
+
+    resetZoom() {
+        this.setZoom(1);
+    }
+
     setReducedMotion(value) {
         this.reducedMotion = Boolean(value);
     }
@@ -197,8 +226,10 @@ _initBuildings() {
     }
 
     _clampCamera() {
-        const maxX = Math.max(0, WORLD_WIDTH - this.viewportWidth);
-        const maxY = Math.max(0, WORLD_HEIGHT - this.viewportHeight);
+        const effectiveWidth = WORLD_WIDTH * this.zoom;
+        const effectiveHeight = WORLD_HEIGHT * this.zoom;
+        const maxX = Math.max(0, effectiveWidth - this.viewportWidth);
+        const maxY = Math.max(0, effectiveHeight - this.viewportHeight);
         this.offsetX = Math.max(0, Math.min(maxX, this.offsetX));
         this.offsetY = Math.max(0, Math.min(maxY, this.offsetY));
         this.targetOffsetX = Math.max(0, Math.min(maxX, this.targetOffsetX));
@@ -230,6 +261,7 @@ _initBuildings() {
 
         ctx.save();
         ctx.translate(centerOffset.x - Math.round(this.offsetX), centerOffset.y - Math.round(this.offsetY));
+        ctx.scale(this.zoom, this.zoom);
 
         this._drawGround();
         this._drawWater();
@@ -532,8 +564,8 @@ const paths = [
 
     getBuildingAt(clientX, clientY) {
         const centerOffset = this._getCenteringOffset();
-        const worldX = clientX + this.offsetX - centerOffset.x;
-        const worldY = clientY + this.offsetY - centerOffset.y;
+        const worldX = (clientX - centerOffset.x) / this.zoom + this.offsetX;
+        const worldY = (clientY - centerOffset.y) / this.zoom + this.offsetY;
 
         for (const building of this.buildings) {
             if (worldX >= building.x - 8 && worldX <= building.x + building.w + 8 &&

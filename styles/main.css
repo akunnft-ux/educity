@@ -543,6 +543,56 @@ body {
     pointer-events: auto;
 }
 
+/* Zoom Controls */
+.zoom-controls {
+    position: absolute;
+    right: var(--spacing-md);
+    bottom: calc(var(--bottom-nav-height) + var(--spacing-md));
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    z-index: 30;
+    pointer-events: auto;
+}
+
+.zoom-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: var(--radius-full);
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: 1px solid var(--color-border);
+}
+
+.zoom-btn:hover,
+.zoom-btn:focus {
+    background: var(--color-surface-variant);
+    color: var(--color-primary);
+    transform: scale(1.05);
+    outline: none;
+}
+
+.zoom-btn:focus-visible {
+    box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.3);
+}
+
+.zoom-btn:active {
+    transform: scale(0.95);
+}
+
+@media (min-width: 768px) {
+    .zoom-controls {
+        display: none;
+    }
+}
+
 /* Bottom Navigation */
 .bottom-nav {
     position: fixed;

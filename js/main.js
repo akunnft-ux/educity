@@ -299,9 +299,67 @@ function initMap() {
 
     canvas.addEventListener('wheel', (e) => {
         if (currentScreen !== 'map' || !mapRenderer) return;
+        
+        // Ctrl+wheel or pinch zoom
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            const newZoom = Math.max(0.5, Math.min(2.5, mapRenderer.zoom * zoomFactor));
+            mapRenderer.setZoom(newZoom, e.clientX, e.clientY);
+            return;
+        }
+        
         e.preventDefault();
         mapRenderer.panTo(mapRenderer.targetOffsetX + e.deltaX, mapRenderer.targetOffsetY + e.deltaY);
     }, { passive: false });
+
+    // Pinch zoom for touch
+    let lastTouchDistance = null;
+    canvas.addEventListener('touchmove', (e) => {
+        if (currentScreen !== 'map' || !mapRenderer) return;
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const distance = Math.hypot(dx, dy);
+            
+            if (lastTouchDistance !== null) {
+                const zoomFactor = distance / lastTouchDistance;
+                const newZoom = Math.max(0.5, Math.min(2.5, mapRenderer.zoom * zoomFactor));
+                const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                mapRenderer.setZoom(newZoom, centerX, centerY);
+            }
+            lastTouchDistance = distance;
+            return;
+        }
+        lastTouchDistance = null;
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+            lastTouchDistance = null;
+        }
+    });
+
+    // Zoom button controls
+    document.getElementById('zoom-in')?.addEventListener('click', () => {
+        if (currentScreen === 'map' && mapRenderer) {
+            mapRenderer.zoomIn(mapRenderer.viewportWidth / 2, mapRenderer.viewportHeight / 2);
+        }
+    });
+
+    document.getElementById('zoom-out')?.addEventListener('click', () => {
+        if (currentScreen === 'map' && mapRenderer) {
+            mapRenderer.zoomOut(mapRenderer.viewportWidth / 2, mapRenderer.viewportHeight / 2);
+        }
+    });
+
+    document.getElementById('zoom-reset')?.addEventListener('click', () => {
+        if (currentScreen === 'map' && mapRenderer) {
+            mapRenderer.resetZoom();
+        }
+    });
 
     window.addEventListener('resize', onResize);
     reducedMotionQuery.addEventListener?.('change', (e) => {
